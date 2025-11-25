@@ -1,0 +1,13 @@
+{
+  "name": "mi-app-docker",
+  "version": "1.0.0",
+  "description": "App de ejemplo para CI/CD con Docker",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "node test/test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
