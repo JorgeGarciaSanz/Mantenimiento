@@ -24,12 +24,31 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/mi-app-ci:latest
           push: false # No subir todavía
 
+      
+
       - name: 🧪 Ejecutar Pruebas dentro de un Contenedor
         run: |
-          docker build -t mi-app-test:latest . # Reconstruimos para la prueba
-          # Ejecutamos las pruebas. Si fallan, el job falla.
-          docker run --rm mi-app-test:latest npm test
+          # 1. Reconstruimos la imagen con el nombre temporal (Asegúrate de que esta línea esté correcta)
+          docker build -t mi-app-test:latest -f Dockerfile.txt .
+          
+          # 2. Ejecutamos el servidor de la app en background (puerto 3000) y le asignamos un nombre
+          # Notar: el comando 'npm start' ejecuta 'node app.js'
+          docker run -d --name test_server mi-app-test:latest npm start
+          
+          # 3. Esperamos 5 segundos para que el servidor se inicie completamente
+          sleep 5
+          
+          # 4. Ejecutamos la prueba (test.js) en un nuevo contenedor, conectado al servidor de prueba
+          # Usamos --network container:test_server para que 'localhost' en la prueba apunte al servidor de la app
+          docker run --rm --network container:test_server mi-app-test:latest npm test
+          
+          # 5. Limpiamos: detenemos y removemos el contenedor del servidor en background
+          docker stop test_server
+          docker rm test_server
         working-directory: .
+
+
+
 
       - name: 🔒 Escanear Imagen con Trivy (Seguridad)
         uses: aquasecurity/trivy-action@master
