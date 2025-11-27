@@ -4,7 +4,7 @@ const http = require('http');
 // NOTA IMPORTANTE: El hostname debe ser el alias de la red de Docker
 // que definimos en el ci-cd.yml: --network-alias app-server
 const options = {
-  hostname: 'app-server', 
+  hostname: 'localhost', // <--- CAMBIO CLAVE: Volver a localhost
   port: 3000, 
   path: '/',
   method: 'GET'

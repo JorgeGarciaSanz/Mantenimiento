@@ -31,20 +31,22 @@ jobs:
       # -------------------------------------------------------------------------
       - name: 🧪 Ejecutar Pruebas dentro de un Contenedor
         run: |
-          # 1. Creamos una red temporal
+          # 1. Creamos una red temporal (todavía necesaria para el alias)
           docker network create ci_test_network
           
-          # 2. Ejecutamos el servidor de la app en background, asignando un alias de red
-          # El contenedor se llamará 'app-server' dentro de la red
+          # 2. Ejecutamos el servidor de la app en background y lo conectamos a la red.
+          # Usamos un alias de red, pero NO lo publicamos al host.
+          # Nota: 'npm start' DEBE ejecutarse en background, pero el comando CMD por defecto ya lo hace
           docker run -d --rm --network ci_test_network --network-alias app-server --name test_server mi-app-test:latest npm start
           
-          # 3. Esperamos 15 segundos para que el servidor Node.js se inicie completamente
+          # 3. Esperamos 15 segundos para el inicio del servidor
           echo "Esperando 15 segundos para el inicio del servidor..."
           sleep 15
           
-          # 4. Ejecutamos la prueba en un nuevo contenedor, conectado a la misma red
-          # NOTA: La prueba DEBE apuntar a 'app-server:3000'
-          docker run --rm --network ci_test_network mi-app-test:latest npm test
+          # 4. Ejecutamos la prueba *dentro* del contenedor del servidor (test_server).
+          # Esto garantiza que 'localhost:3000' funcione correctamente.
+          # Nota: Debes cambiar test.js para que apunte a 'localhost' si usas este método.
+          docker exec test_server npm test
           
           # 5. Limpiamos: detenemos y borramos la red temporal
           docker stop test_server
