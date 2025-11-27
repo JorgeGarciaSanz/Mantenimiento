@@ -20,7 +20,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Dockerfile.txt
           tags: ${{ secrets.DOCKER_USERNAME }}/mi-app-ci:latest
           push: false # No subir todavía
 
