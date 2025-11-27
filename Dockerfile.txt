@@ -1,25 +1,18 @@
 # -------------------------------------------------------------------
-# 1. ETAPA DE CONSTRUCCIÓN: Instalación de dependencias y preparación
-# Utiliza una imagen base robusta para la compilación
+# 1. ETAPA DE CONSTRUCCIÓN: Utilizada para instalar dependencias
 # -------------------------------------------------------------------
 FROM node:20-alpine AS builder
 
-# Establece el directorio de trabajo dentro del contenedor
+# Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos de definición de dependencias
-# Asume que 'package.json' está en la raíz del repositorio local
-COPY src/package*.json ./
-
-# Instala todas las dependencias
+# CRÍTICO: Copia package.json desde la raíz del contexto (donde está el Dockerfile)
+COPY package*.json ./
 RUN npm install
 
-# Copia el código fuente y el script de prueba
-# Copia la aplicación (app.js) y la lógica de la carpeta src/ al directorio /app
+# Copia la aplicación (app.js) y el resto del código desde src/
 COPY src/ .
-
-# Copia la carpeta de pruebas para que 'docker exec node test/test.js' funcione
-# Asume que 'test/' está en la raíz del repositorio local
+# Copia la carpeta de pruebas (test/)
 COPY test/ ./
 
 # -------------------------------------------------------------------
