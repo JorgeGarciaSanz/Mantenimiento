@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Copia los archivos de definición de dependencias
 # Asume que 'package.json' está en la raíz del repositorio local
-COPY package*.json ./
+COPY src/package*.json ./
 
 # Instala todas las dependencias
 RUN npm install
