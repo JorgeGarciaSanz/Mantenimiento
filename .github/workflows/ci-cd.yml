@@ -15,52 +15,58 @@ jobs:
       - name: ⚙️ Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # -------------------------------------------------------------------------
+      # FASE CI: Construcción de Imagen (Solo para Buildx)
+      # -------------------------------------------------------------------------
       - name: 🏗️ Construir la Imagen Docker (CI)
-        # Construye la imagen, pero no la sube aún
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.txt
-          tags: ${{ secrets.DOCKER_USERNAME }}/mi-app-ci:latest
+          file: ./Dockerfile.txt # Usamos .txt ya que lo mantuviste con esa extensión
+          tags: mi-app-test:latest # Etiqueta temporal para el runner
           push: false # No subir todavía
 
-      
-
+      # -------------------------------------------------------------------------
+      # FASE CI: Ejecutar Pruebas (Ajuste de Red y Tiempos)
+      # -------------------------------------------------------------------------
       - name: 🧪 Ejecutar Pruebas dentro de un Contenedor
         run: |
-          # 1. Reconstruimos la imagen (usando -f Dockerfile.txt si es necesario)
-          docker build -t mi-app-test:latest -f Dockerfile.txt .
-          
-          # 2. Creamos una red temporal para que los contenedores se vean entre sí
+          # 1. Creamos una red temporal
           docker network create ci_test_network
           
-          # 3. Ejecutamos el servidor de la app en background con un nombre de red (alias)
-          # Esto hace que el servidor sea accesible por el nombre 'app-server'
+          # 2. Ejecutamos el servidor de la app en background, asignando un alias de red
+          # El contenedor se llamará 'app-server' dentro de la red
           docker run -d --rm --network ci_test_network --network-alias app-server --name test_server mi-app-test:latest npm start
           
-          # 4. Aumentamos el tiempo de espera por si la app es lenta
-          sleep 10 
+          # 3. Esperamos 15 segundos para que el servidor Node.js se inicie completamente
+          echo "Esperando 15 segundos para el inicio del servidor..."
+          sleep 15
           
-          # 5. Ejecutamos la prueba en un nuevo contenedor, conectado a la misma red
-          # NOTA: La prueba debe conectarse a 'app-server:3000' en lugar de 'localhost:3000'
+          # 4. Ejecutamos la prueba en un nuevo contenedor, conectado a la misma red
+          # NOTA: La prueba DEBE apuntar a 'app-server:3000'
           docker run --rm --network ci_test_network mi-app-test:latest npm test
           
-          # 6. Limpiamos: borramos la red temporal. El contenedor 'test_server' se borra solo por --rm.
+          # 5. Limpiamos: detenemos y borramos la red temporal
+          docker stop test_server
           docker network rm ci_test_network
         working-directory: .
-
-
-
-
+        
+      # -------------------------------------------------------------------------
+      # FASE CI: Escaneo de Seguridad (DevSecOps)
+      # -------------------------------------------------------------------------
       - name: 🔒 Escanear Imagen con Trivy (Seguridad)
+        # Usamos la imagen construida 'mi-app-test:latest'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'mi-app-test:latest' # Escanea la imagen recién construida
+          image-ref: 'mi-app-test:latest' 
           format: 'table'
-          exit-code: '1' # Falla si encuentra vulnerabilidades críticas
+          exit-code: '1' # Falla si encuentra CRITICAL o HIGH
           severity: 'CRITICAL,HIGH'
 
-      - name: 🚀 Login y Push a Docker Hub (CD - Entrega)
+      # -------------------------------------------------------------------------
+      # FASE CD: Entrega Continua (Subida a Docker Hub)
+      # -------------------------------------------------------------------------
+      - name: 🚀 Login y Push a Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -70,21 +76,25 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true # Ahora sí, la subimos
-          tags: ${{ secrets.DOCKER_USERNAME }}/mi-app-ci:v${{ github.sha }} # Tag con el hash de Git para inmutabilidad
+          file: ./Dockerfile.txt # Usamos .txt ya que lo mantuviste con esa extensión
+          push: true
+          # Etiqueta con el hash de Git para inmutabilidad y 'latest' para facilidad
+          tags: ${{ secrets.DOCKER_USERNAME }}/mi-app-ci:v${{ github.sha }}, ${{ secrets.DOCKER_USERNAME }}/mi-app-ci:latest
 
-      - name: 🌍 Despliegue Continuo (CD) - (Simulado con SSH/Script)
-        # ESTE ES UN PASO SIMULADO. Debes adaptarlo a tu servidor.
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            echo "Iniciando despliegue en el servidor..."
-            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-            docker pull ${{ secrets.DOCKER_USERNAME }}/mi-app-ci:v${{ github.sha }}
-            docker stop mi-app-web || true
-            docker rm mi-app-web || true
-            docker run -d --name mi-app-web -p 80:3000 ${{ secrets.DOCKER_USERNAME }}/mi-app-ci:v${{ github.sha }}
-            echo "Despliegue de la versión v${{ github.sha }} finalizado."
+      # -------------------------------------------------------------------------
+      # FASE CD: Despliegue Continuo (Desactivado hasta que la CI pase)
+      # -------------------------------------------------------------------------
+      # - name: 🌍 Despliegue Continuo (CD) - (Simulado con SSH/Script)
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host: ${{ secrets.SSH_HOST }}
+      #     username: ${{ secrets.SSH_USERNAME }}
+      #     key: ${{ secrets.SSH_KEY }}
+      #     script: |
+      #       echo "Iniciando despliegue en el servidor..."
+      #       docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+      #       docker pull ${{ secrets.DOCKER_USERNAME }}/mi-app-ci:v${{ github.sha }}
+      #       docker stop mi-app-web || true
+      #       docker rm mi-app-web || true
+      #       docker run -d --name mi-app-web -p 80:3000 ${{ secrets.DOCKER_USERNAME }}/mi-app-ci:v${{ github.sha }}
+      #       echo "Despliegue de la versión v${{ github.sha }} finalizado."
