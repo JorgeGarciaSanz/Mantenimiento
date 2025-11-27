@@ -31,19 +31,19 @@ jobs:
       # -------------------------------------------------------------------------
       - name: 🧪 Ejecutar Pruebas dentro de un Contenedor
         run: |
-          # 1. Ejecutamos el servidor de la app en background (persistencia)
-          # Usamos un comando 'sh' para asegurar que el servidor se quede en background
-          docker run -d --rm --name test_server -p 3000:3000 mi-app-test:latest /bin/sh -c "npm start &"
+          # 1. Ejecutamos el servidor de la app en background. 
+          # CRÍTICO: Usamos el comando sleep para forzar la persistencia del contenedor.
+          docker run -d --rm --name test_server -p 3000:3000 mi-app-test:latest /bin/sh -c "npm start & sleep 20"
           
-          # 2. Esperamos 15 segundos para el inicio del servidor
-          echo "Esperando 15 segundos para el inicio del servidor..."
-          sleep 15
+          # 2. Esperamos 10 segundos para el inicio del servidor
+          echo "Esperando 10 segundos para el inicio del servidor..."
+          sleep 10
           
           # 3. Ejecutamos la prueba directamente en el contenedor
-          # Ahora, usamos 'npm test' ya que el script test.js existe en el contenedor
+          # La prueba usa 'localhost:3000'
           docker exec test_server npm test
           
-          # 4. Limpiamos
+          # 4. Limpiamos: el 'docker stop' se ejecutará cuando el 'sleep 20' termine
           docker stop test_server
           docker rm test_server
         working-directory: .
