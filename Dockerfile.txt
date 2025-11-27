@@ -1,21 +1,44 @@
-# 1. ETAPA DE CONSTRUCCIÓN: Utilizada para instalar dependencias
+# -------------------------------------------------------------------
+# 1. ETAPA DE CONSTRUCCIÓN: Instalación de dependencias y preparación
+# Utiliza una imagen base robusta para la compilación
+# -------------------------------------------------------------------
 FROM node:20-alpine AS builder
 
+# Establece el directorio de trabajo dentro del contenedor
 WORKDIR /app
-COPY src/package*.json ./
+
+# Copia los archivos de definición de dependencias
+# Asume que 'package.json' está en la raíz del repositorio local
+COPY package*.json ./
+
+# Instala todas las dependencias
 RUN npm install
+
+# Copia el código fuente y el script de prueba
+# Copia la aplicación (app.js) y la lógica de la carpeta src/ al directorio /app
 COPY src/ .
 
-# 2. ETAPA DE PRODUCCIÓN: Imagen final, más pequeña y segura
+# Copia la carpeta de pruebas para que 'docker exec node test/test.js' funcione
+# Asume que 'test/' está en la raíz del repositorio local
+COPY test/ ./
+
+# -------------------------------------------------------------------
+# 2. ETAPA DE PRODUCCIÓN: Imagen final, ligera y segura
+# Utiliza una imagen base minimalista para el runtime
+# -------------------------------------------------------------------
 FROM node:20-alpine AS final
 
 # Configuración: Establece el puerto, el usuario y el directorio
 WORKDIR /usr/src/app
+# Define la variable de entorno para producción
 ENV NODE_ENV production
+# Expone el puerto que usa la aplicación (3000)
 EXPOSE 3000
 
-# Copia los artefactos de la etapa 'builder'
+# Copia SOLO los artefactos esenciales de la etapa 'builder'
+# Esto incluye los node_modules instalados, el código fuente (src/) y la carpeta test/
 COPY --from=builder /app .
 
 # Comando principal para iniciar la aplicación
+# Ejecuta el script 'start' definido en package.json (node app.js)
 CMD ["npm", "start"]
