@@ -28,7 +28,8 @@ EXPOSE 3000
 # Copia SOLO los artefactos esenciales de la etapa 'builder'
 COPY --from=builder /app .
 
-# Comando principal para iniciar la aplicación (CORRECCIÓN CRÍTICA)
-# Usamos un comando ENTRYPOINT que llama a 'node' para garantizar que el proceso
-# principal sea el servidor, lo que mejora la persistencia.
+# CRÍTICO: Aseguramos que el script de inicio de la aplicación tenga permisos de ejecución
+RUN chmod +x app.js
+
+# Comando principal para iniciar la aplicación
 ENTRYPOINT ["node", "app.js"]
