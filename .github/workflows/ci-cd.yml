@@ -29,21 +29,34 @@ jobs:
       # -------------------------------------------------------------------------
       # FASE CI: Ejecutar Pruebas (Ajuste de Red y Tiempos)
       # -------------------------------------------------------------------------
-      - name: 🧪 Ejecutar Pruebas dentro de un Contenedor
+      - name: 🧪 Ejecutar Pruebas de Integración (Usando Host)
         run: |
-          # 1. Ejecutamos el servidor de la app en background. 
-          # CRÍTICO: Usamos el comando sleep para forzar la persistencia del contenedor.
-          docker run -d --rm --name test_server -p 3000:3000 mi-app-test:latest /bin/sh -c "npm start & sleep 20"
+          # 1. Ejecutamos el servidor de la app en background (persistencia)
+          # Mapeamos el puerto 3000 del contenedor al puerto 3000 del runner (host).
+          # Usamos sleep para forzar que el contenedor esté vivo.
+          docker run -d --rm --name test_server -p 3000:3000 mi-app-test:latest /bin/sh -c "npm start & sleep 15"
           
-          # 2. Esperamos 10 segundos para el inicio del servidor
-          echo "Esperando 10 segundos para el inicio del servidor..."
-          sleep 10
+          # 2. Esperamos 5 segundos y usamos un bucle para esperar a que el servidor esté listo (Health Check)
+          echo "Esperando a que el servidor responda en el host (localhost:3000)..."
           
-          # 3. Ejecutamos la prueba directamente en el contenedor
-          # La prueba usa 'localhost:3000'
-          docker exec test_server npm test
+          # Bucle que intenta conectar con curl hasta 10 veces (máx. 20 segundos)
+          for i in {1..10}; do
+            # curl intenta conectarse a localhost:3000 (el host del runner)
+            response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
+            if [ "$response" -eq 200 ]; then
+              echo "✅ Prueba de conexión exitosa: Código 200. Servidor listo."
+              break
+            fi
+            echo "Intento $i/10 fallido (Código: $response). Reintentando en 2 segundos..."
+            sleep 2
+            if [ "$i" -eq 10 ]; then
+              echo "❌ El servidor no respondió después de 10 intentos."
+              docker stop test_server
+              exit 1
+            fi
+          done
           
-          # 4. Limpiamos: el 'docker stop' se ejecutará cuando el 'sleep 20' termine
+          # 3. Limpiamos: detenemos y eliminamos el contenedor
           docker stop test_server
           docker rm test_server
         working-directory: .
