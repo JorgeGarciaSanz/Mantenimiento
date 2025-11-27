@@ -1,4 +1,4 @@
-const app = require('../src/app');
+//const app = require('../src/app');
 const http = require('http');
 
 // NOTA IMPORTANTE: El hostname debe ser el alias de la red de Docker
@@ -16,7 +16,7 @@ const req = http.request(options, (res) => {
   if (res.statusCode === 200) {
     console.log('✅ Prueba de conexión exitosa: Código 200.');
     // No necesitamos app.close() si lo ejecutamos en un contenedor separado
-    process.exit(0); 
+    //process.exit(0); 
   } else {
     console.error('❌ Prueba fallida: Código de estado incorrecto.');
     // No necesitamos app.close() si lo ejecutamos en un contenedor separado

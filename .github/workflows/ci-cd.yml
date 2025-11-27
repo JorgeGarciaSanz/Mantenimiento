@@ -31,26 +31,22 @@ jobs:
       # -------------------------------------------------------------------------
       - name: 🧪 Ejecutar Pruebas dentro de un Contenedor
         run: |
-          # 1. Creamos una red temporal (todavía necesaria para el alias)
-          docker network create ci_test_network
+          # 1. Ejecutamos el servidor de la app en background (persistencia)
+          # Mapeamos el puerto 3000 del contenedor al puerto 3000 del runner.
+          docker run -d --rm --name test_server -p 3000:3000 mi-app-test:latest npm start
           
-          # 2. Ejecutamos el servidor de la app en background y lo conectamos a la red.
-          # Usamos un alias de red, pero NO lo publicamos al host.
-          # Nota: 'npm start' DEBE ejecutarse en background, pero el comando CMD por defecto ya lo hace
-          docker run -d --rm --network ci_test_network --network-alias app-server --name test_server mi-app-test:latest npm start
-          
-          # 3. Esperamos 15 segundos para el inicio del servidor
+          # 2. Esperamos 15 segundos para el inicio del servidor
           echo "Esperando 15 segundos para el inicio del servidor..."
           sleep 15
           
-          # 4. Ejecutamos la prueba *dentro* del contenedor del servidor (test_server).
+          # 3. Ejecutamos el script de prueba *dentro* del contenedor del servidor (test_server).
+          # Usamos 'node test/test.js' ya que el directorio de trabajo es la raíz del contenedor.
           # Esto garantiza que 'localhost:3000' funcione correctamente.
-          # Nota: Debes cambiar test.js para que apunte a 'localhost' si usas este método.
-          docker exec test_server npm test
+          docker exec test_server node test/test.js
           
-          # 5. Limpiamos: detenemos y borramos la red temporal
+          # 4. Limpiamos
           docker stop test_server
-          docker network rm ci_test_network
+          docker rm test_server
         working-directory: .
         
       # -------------------------------------------------------------------------
