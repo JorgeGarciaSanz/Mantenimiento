@@ -2,8 +2,8 @@ const app = require('../src/app');
 const http = require('http');
 
 const options = {
-  hostname: 'localhost',
-  port: 3000, // Debe coincidir con el puerto del contenedor/app
+  hostname: 'app-server', // <--- CAMBIO CLAVE: Usar el alias de red
+  port: 3000, 
   path: '/',
   method: 'GET'
 };

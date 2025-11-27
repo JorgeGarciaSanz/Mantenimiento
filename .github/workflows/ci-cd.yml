@@ -28,23 +28,25 @@ jobs:
 
       - name: 🧪 Ejecutar Pruebas dentro de un Contenedor
         run: |
-          # 1. Reconstruimos la imagen con el nombre temporal (Asegúrate de que esta línea esté correcta)
+          # 1. Reconstruimos la imagen (usando -f Dockerfile.txt si es necesario)
           docker build -t mi-app-test:latest -f Dockerfile.txt .
           
-          # 2. Ejecutamos el servidor de la app en background (puerto 3000) y le asignamos un nombre
-          # Notar: el comando 'npm start' ejecuta 'node app.js'
-          docker run -d --name test_server mi-app-test:latest npm start
+          # 2. Creamos una red temporal para que los contenedores se vean entre sí
+          docker network create ci_test_network
           
-          # 3. Esperamos 5 segundos para que el servidor se inicie completamente
-          sleep 5
+          # 3. Ejecutamos el servidor de la app en background con un nombre de red (alias)
+          # Esto hace que el servidor sea accesible por el nombre 'app-server'
+          docker run -d --rm --network ci_test_network --network-alias app-server --name test_server mi-app-test:latest npm start
           
-          # 4. Ejecutamos la prueba (test.js) en un nuevo contenedor, conectado al servidor de prueba
-          # Usamos --network container:test_server para que 'localhost' en la prueba apunte al servidor de la app
-          docker run --rm --network container:test_server mi-app-test:latest npm test
+          # 4. Aumentamos el tiempo de espera por si la app es lenta
+          sleep 10 
           
-          # 5. Limpiamos: detenemos y removemos el contenedor del servidor en background
-          docker stop test_server
-          docker rm test_server
+          # 5. Ejecutamos la prueba en un nuevo contenedor, conectado a la misma red
+          # NOTA: La prueba debe conectarse a 'app-server:3000' en lugar de 'localhost:3000'
+          docker run --rm --network ci_test_network mi-app-test:latest npm test
+          
+          # 6. Limpiamos: borramos la red temporal. El contenedor 'test_server' se borra solo por --rm.
+          docker network rm ci_test_network
         working-directory: .
 
 
