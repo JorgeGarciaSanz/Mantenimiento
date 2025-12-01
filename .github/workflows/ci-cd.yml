@@ -22,9 +22,10 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.txt # Usamos .txt ya que lo mantuviste con esa extensión
-          tags: mi-app-test:latest # Etiqueta temporal para el runner
-          push: false # No subir todavía
+          file: ./Dockerfile.txt
+          tags: mi-app-test:latest
+          push: false
+          load: true # <--- ¡CLAVE! Esto asegura que la imagen se almacene localmente
 
       # -------------------------------------------------------------------------
       # FASE CI: Ejecutar Pruebas (Ajuste de Red y Tiempos)
