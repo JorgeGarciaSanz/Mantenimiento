@@ -32,32 +32,33 @@ jobs:
       # -------------------------------------------------------------------------
       - name: 🧪 Ejecutar Pruebas de Integración (Usando Host)
         run: |
-          # 1. Ejecutamos el servidor de la app en background (El ENTRYPOINT ahora es estable)
+          # 1. Ejecutamos el servidor (Con la imagen cargada localmente gracias a load: true)
           docker run -d --rm --name test_server -p 3000:3000 mi-app-test:latest 
           
-          # 2. Esperamos y usamos el bucle de health check (curl)
+          # 2. Esperamos un momento inicial
           echo "Esperando a que el servidor responda en el host (localhost:3000)..."
+          sleep 5
           
-          # Bucle que intenta conectar con curl hasta 10 veces (máx. 20 segundos)
+          # 3. Bucle de Health Check con tolerancia a fallos
           for i in {1..10}; do
-            # curl intenta conectarse a localhost:3000 (el host del runner)
-            response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
+            # CORRECCIÓN: Añadimos '|| echo "000"' para evitar que el script muera si curl falla
+            response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 || echo "000")
+            
             if [ "$response" -eq 200 ]; then
               echo "✅ Prueba de conexión exitosa: Código 200. Servidor listo."
-              break
+              # Detenemos el contenedor y salimos con éxito
+              docker stop test_server
+              exit 0
             fi
+            
             echo "Intento $i/10 fallido (Código: $response). Reintentando en 2 segundos..."
             sleep 2
-            if [ "$i" -eq 10 ]; then
-              echo "❌ El servidor no respondió después de 10 intentos."
-              docker stop test_server
-              exit 1
-            fi
           done
           
-          # 3. Limpiamos: detenemos y eliminamos el contenedor
+          # Si llegamos aquí, falló
+          echo "❌ El servidor no respondió después de 10 intentos."
           docker stop test_server
-          docker rm test_server
+          exit 1
         working-directory: .
         
       # -------------------------------------------------------------------------
